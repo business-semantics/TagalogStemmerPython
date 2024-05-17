@@ -3,34 +3,38 @@ package com.smartkyc.stemmers.tagalog;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang.StringUtils;
 
-import java.io.*;
-import java.nio.charset.Charset;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class TagalogStemmer
 {
+	private static List<String> rootsForValidating = null;
+	private static final String VOWELS = "aeiouAEIOU";
 
-	private static boolean periodFlag = true;
+	private static final String CONSONANTS = "bcdfghklmnngpqrstvwyBCDFGHKLMNNGPQRSTVWY";
 
-	private static boolean passFlag = false;
-
-	static final String VOWELS = "aeiouAEIOU";
-
-	static final String CONSONANTS = "bcdfghklmnngpqrstvwyBCDFGHKLMNNGPQRSTVWY";
-
-	static final Set<String> PREFIX_SET = Sets.newHashSet("nakikipag", "pakikipag", "pinakama", "pagpapa", "pinagka", "panganga",
+	private static final Set<String> PREFIX_SET = Sets.newHashSet("nakikipag", "pakikipag", "pinakama", "pagpapa", "pinagka", "panganga",
 			"makapag", "packaging", "tagapag", "makipag", "nakipag", "tigapag", "pakiki", "magpa", "napaka", "pinaka", "ipinag",
 			"pagka", "pinag", "mapag", "mapa", "taga", "ipag", "tiga", "pala", "pina", "pang", "naka", "nang", "mang", "sing",
 			"ipa", "pam", "pan", "pag", "tag", "mai", "mag", "nam", "nag", "man", "may", "ma", "na", "ni", "pa", "ka", "um", "in",
 			"i");
 
-	final static Set<String> INFIX_SET = Sets.newHashSet("um", "in");
+	private static final Set<String> INFIX_SET = Sets.newHashSet("um", "in");
 
-	final static Set<String> SUFFIX_SET = Sets.newHashSet("syon", "dor", "ita", "han", "hin", "ing", "ang", "ng", "an", "in", "g");
+	private static final Set<String> SUFFIX_SET = Sets.newHashSet("syon", "dor", "ita", "han", "hin", "ing", "ang", "ng", "an", "in", "g");
 
 	static String stem(String token) throws IOException
 	{
@@ -426,41 +430,24 @@ public class TagalogStemmer
 
 	static boolean checkValidation(String token) throws IOException
 	{
-		String file = "/validation.txt";
-		try (InputStream stream = TagalogStemmer.class.getResourceAsStream(file)) {
-			return loadFromStream(stream, token);
-		} catch (final FileNotFoundException e) {
-			throw new FileNotFoundException(file);
-		}
+		return loadFromStream(token);
 	}
 
-	public static boolean loadFromStream(final InputStream stream, String token) throws IOException
+	public static boolean loadFromStream(String token) throws IOException
 	{
-		try (final InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-			try (final BufferedReader in = new BufferedReader(reader)) {
-				List<String> collect = in.lines().map(String::trim).filter(l -> !l.startsWith("#"))
+		final String file = "/validation.txt";
+		if (rootsForValidating == null) {
+			try (InputStream stream = TagalogStemmer.class.getResourceAsStream(file);
+					final InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+					BufferedReader in = new BufferedReader(reader);) {
+				rootsForValidating = in.lines().map(String::trim).filter(l -> !l.startsWith("#"))
 						.filter(StringUtils::isNotBlank).collect(Collectors.toList());
-				return collect.contains(token);
-			}
-		} catch (final IOException e) {
-			throw new IOException("Error parsing list to validate stemmed word.");
-		}
-	}
+				return rootsForValidating.contains(token);
 
-
-
-	static double validate(List<String> stemmed, List<String> errors) throws IOException {
-		int check = 0;
-		List<String> data = Files.readAllLines(Paths.get("validation.txt"));
-
-		for (String stem : stemmed) {
-			if (Character.isUpperCase(stem.charAt(0)) || data.contains(stem)) {
-				check++;
-			} else {
-				errors.add(stem);
+			} catch (final FileNotFoundException e) {
+				throw new FileNotFoundException(file);
 			}
 		}
-
-		return Double.parseDouble(String.format("%.2f", (double) check / stemmed.size() * 100));
+		return rootsForValidating.contains(token);
 	}
 }
