@@ -1,3 +1,4 @@
+babaeng : baen
 aabot : abot
 aabutin : abot
 aagaw : agaw
@@ -8170,7 +8171,7 @@ malabnaw : labnaw
 malabo : labo
 Malabon : Malabon
 malabong : labo
-Malacañang : Malacañang
+Malacaï¿½ang : Malacaï¿½ang
 malaganap : laganap
 malagay : lagay
 malagkit : lagkit
