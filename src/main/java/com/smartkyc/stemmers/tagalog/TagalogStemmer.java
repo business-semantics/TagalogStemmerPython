@@ -45,6 +45,7 @@ public class TagalogStemmer
 		token = cleanDuplication(token.toLowerCase());
 		token = cleanRepeatingSubstrings(token);
 		token = cleanRepetition(token, repetitions);
+		token = cleanPrefixWithDbecomesR(token);
 		token = cleanPrefixWithPBtoM(token);
 		token = cleanPrefixWithSDTtoN(token);
 		token = cleanPrefixWithKtoNg(token);
@@ -238,7 +239,7 @@ public class TagalogStemmer
 				StringBuilder repeatedString = new StringBuilder();
 				repeatedString.append(currentSubstring).append(currentSubstring);
 				if (token.contains(repeatedString)) {
-					token = token.substring(0, i - 1) + token.substring(i + 1, token.length());
+					token = token.substring(0, i - 1) + token.substring(i + 1);
 					return token;
 				}
 			}
@@ -309,27 +310,38 @@ public class TagalogStemmer
 		for (String prefix : prefixSet) {
 			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
 				if ((token.startsWith(prefix) && token.charAt(prefix.length()) == 'm')) {
-					String potentialForm = token.substring(prefix.length());
-					potentialForm = swapCharAt(potentialForm, 'p', 0);
-					if (isInRoots(potentialForm)) {
-						return potentialForm;
+					String tokenWithoutPrefix = token.substring(prefix.length());
+					if (isInRoots(tokenWithoutPrefix)) {
+						return tokenWithoutPrefix;
 					}
-					String potentialFormWithoutSuffix = cleanSuffix(potentialForm);
-					if (isInRoots(potentialFormWithoutSuffix)) {
-						return potentialFormWithoutSuffix;
+					String potentialFormSwapP = revertToRoot(tokenWithoutPrefix, 'p');
+					if (!potentialFormSwapP.equals(tokenWithoutPrefix)) {
+						return potentialFormSwapP;
 					}
-					potentialForm = swapCharAt(potentialForm, 'b', 0);
-					if (isInRoots(potentialForm)) {
-						return potentialForm;
-					}
-					potentialFormWithoutSuffix = cleanSuffix(potentialForm);
-					if (isInRoots(potentialFormWithoutSuffix)) {
-						return potentialFormWithoutSuffix;
+					String potentialFormSwapB = revertToRoot(tokenWithoutPrefix, 'b');
+					if (!potentialFormSwapB.equals(tokenWithoutPrefix)) {
+						return potentialFormSwapB;
 					}
 				}
 			}
 		}
 		return token;
+	}
+
+	private static String revertToRoot(String tokenWithoutPrefix, char potentialChar)
+	{
+		if (isInRoots(tokenWithoutPrefix)) {
+			return tokenWithoutPrefix;
+		}
+		String potentialForm = swapCharAt(tokenWithoutPrefix, potentialChar, 0);
+		if (isInRoots(potentialForm)) {
+			return potentialForm;
+		}
+		String potentialFormWithoutSuffix = cleanSuffix(potentialForm);
+		if (isInRoots(potentialFormWithoutSuffix)) {
+			return potentialFormWithoutSuffix;
+		}
+		return tokenWithoutPrefix;
 	}
 
 	private static String cleanPrefixWithSDTtoN(String token)
@@ -341,31 +353,48 @@ public class TagalogStemmer
 		final Set<String> prefixSet = Sets.newLinkedHashSet(Arrays.asList("mana", "pana", "nana", "ma", "pa", "na"));
 		for (String prefix : prefixSet) {
 			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
+
 				if ((token.startsWith(prefix)) && token.charAt(prefix.length()) == 'n') {
-					String potentialForm = token.substring(prefix.length());
-					potentialForm = swapCharAt(potentialForm, 's', 0);
-					if (isInRoots(potentialForm)) {
-						return potentialForm;
+					String tokenWithoutPrefix = token.substring(prefix.length());
+					if (isInRoots(tokenWithoutPrefix)) {
+						return tokenWithoutPrefix;
 					}
-					String potentialFormWithoutSuffix = cleanSuffix(potentialForm);
-					if (isInRoots(potentialFormWithoutSuffix)) {
-						return potentialFormWithoutSuffix;
+					String potentialFormSwapS = revertToRoot(tokenWithoutPrefix, 's');
+					if (!potentialFormSwapS.equals(tokenWithoutPrefix)) {
+						return potentialFormSwapS;
 					}
-					potentialForm = swapCharAt(potentialForm, 'd', 0);
-					if (isInRoots(potentialForm)) {
-						return potentialForm;
+					String potentialFormSwapD = revertToRoot(tokenWithoutPrefix, 'd');
+					if (!potentialFormSwapD.equals(tokenWithoutPrefix)) {
+						return potentialFormSwapD;
 					}
-					potentialFormWithoutSuffix = cleanSuffix(potentialForm);
-					if (isInRoots(potentialFormWithoutSuffix)) {
-						return potentialFormWithoutSuffix;
+					String potentialFormSwapT = revertToRoot(tokenWithoutPrefix, 't');
+					if (!potentialFormSwapT.equals(tokenWithoutPrefix)) {
+						return potentialFormSwapT;
 					}
-					potentialForm = swapCharAt(potentialForm, 't', 0);
-					if (isInRoots(potentialForm)) {
-						return potentialForm;
+				}
+			}
+		}
+		return token;
+	}
+
+	private static String cleanPrefixWithDbecomesR(String token)
+	{
+		if (isInRoots(token)) {
+			return token;
+		}
+
+		final Set<String> prefixSet = Sets.newLinkedHashSet(
+				Arrays.asList("magpa", "nagpa", "kina", "maka", "naka", "mapa", "ipa", "napa", "ka", "ma"));
+		for (String prefix : prefixSet) {
+			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
+				if ((token.startsWith(prefix)) && token.charAt(prefix.length()) == 'r') {
+					String tokenWithoutPrefix = token.substring(prefix.length());
+					if (isInRoots(tokenWithoutPrefix)) {
+						return tokenWithoutPrefix;
 					}
-					potentialFormWithoutSuffix = cleanSuffix(potentialForm);
-					if (isInRoots(potentialFormWithoutSuffix)) {
-						return potentialFormWithoutSuffix;
+					String potentialFormSwapS = revertToRoot(tokenWithoutPrefix, 'd');
+					if (!potentialFormSwapS.equals(tokenWithoutPrefix)) {
+						return potentialFormSwapS;
 					}
 				}
 			}
@@ -379,9 +408,12 @@ public class TagalogStemmer
 			return token;
 		}
 		if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
-			if ((token.startsWith("ma") || token.startsWith("na") || token.startsWith("pa")) && token.charAt(
-					2) == 'n' && token.charAt(3) == 'g') {
+			if ((token.startsWith("ma") || token.startsWith("na") || token.startsWith("pa")) //
+					&& token.charAt(2) == 'n' && token.charAt(3) == 'g') {
 				String potentialForm = token.substring(3);
+				if (isInRoots(potentialForm)) {
+					return potentialForm;
+				}
 				potentialForm = swapCharAt(potentialForm, 'k', 0);
 				if (isInRoots(potentialForm)) {
 					return potentialForm;

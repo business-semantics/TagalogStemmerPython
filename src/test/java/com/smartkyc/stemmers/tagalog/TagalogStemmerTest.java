@@ -190,6 +190,8 @@ public class TagalogStemmerTest
 		assertEquals("sampalataya", stem2);
 		String stem4 = stem("iisipan");
 		assertEquals("isip", stem4);
+		String stem5 = stem("mabibigyan");
+		assertEquals("bigyan", stem5);
 	}
 
 	@Test
@@ -222,7 +224,7 @@ public class TagalogStemmerTest
 						if (stem.equals(root.toLowerCase())) {
 							correctCount++;
 						} else {
-							System.out.println("Original word: " + word + " stemmed:" + stem + ". Expected(root): " + root);
+							//							System.out.println("Original word: " + word + " stemmed:" + stem + ". Expected(root): " + root);
 							wrongCount++;
 						}
 					}
