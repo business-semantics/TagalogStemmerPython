@@ -661,18 +661,6 @@ public class TagalogStemmer
 
 	private boolean isInRoots(String token)
 	{
-		final String file = "/roots.txt";
-		if (rootsForValidating == null) {
-			try (InputStream stream = TagalogStemmer.class.getResourceAsStream(file);
-					final InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
-					BufferedReader in = new BufferedReader(reader)) {
-				rootsForValidating = in.lines().map(String::trim).map(String::toLowerCase).filter(l -> !l.startsWith("#"))
-						.filter(StringUtils::isNotBlank).collect(Collectors.toList());
-				return rootsForValidating.contains(token.toLowerCase());
-			} catch (final IOException e) {
-				log.error(e.getMessage());
-			}
-		}
 		return rootsForValidating.contains(token.toLowerCase());
 	}
 }
