@@ -34,9 +34,9 @@ public class TagalogStemmer
 		}
 	}
 
-	private List<String> rootsForValidating;
+	private final List<String> rootsForValidating;
 
-	private final String CONSONANTS = "bcdfghklmnngpqrstvwyBCDFGHKLMNNGPQRSTVWY";
+	private static final String CONSONANTS = "bcdfghklmnngpqrstvwyBCDFGHKLMNNGPQRSTVWY";
 
 	public String stem(String token)
 	{
@@ -505,8 +505,8 @@ public class TagalogStemmer
 
 	private boolean isVowel(char letter)
 	{
-		String VOWELS = "aeiouAEIOU";
-		return VOWELS.contains(String.valueOf(letter));
+		String vowels = "aeiouAEIOU";
+		return vowels.contains(String.valueOf(letter));
 	}
 
 	private boolean isConsonant(String character)
