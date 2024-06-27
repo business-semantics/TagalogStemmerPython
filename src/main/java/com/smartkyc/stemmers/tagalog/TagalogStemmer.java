@@ -1,8 +1,6 @@
 package com.smartkyc.stemmers.tagalog;
 
-import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,9 +28,28 @@ public class TagalogStemmer
 			try (final InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
 					BufferedReader in = new BufferedReader(reader)) {
 				rootsForValidating = in.lines().map(String::trim).map(String::toLowerCase).filter(l -> !l.startsWith("#"))
-						.filter(StringUtils::isNotBlank).collect(Collectors.toList());
+						.filter(this::isNotBlank).collect(Collectors.toList());
 			}
 		}
+	}
+
+	private boolean isNotBlank(String str)
+	{
+		return !isBlank(str);
+	}
+
+	private boolean isBlank(String str)
+	{
+		int strLen;
+		if (str == null || (strLen = str.length()) == 0) {
+			return true;
+		}
+		for (int i = 0; i < strLen; i++) {
+			if ((!Character.isWhitespace(str.charAt(i)))) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private final List<String> rootsForValidating;
@@ -257,13 +275,13 @@ public class TagalogStemmer
 
 	private String cleanPrefix(String token)
 	{
-		final Set<String> prefixSet = Sets.newLinkedHashSet(
-				Arrays.asList("nakikipag", "pakikipag", "pinakama", "pagpapa", "pinagka", "maisasa", "panganga", "makapag",
+		final Set<String> prefixSet = new LinkedHashSet<>(
+				(Arrays.asList("nakikipag", "pakikipag", "pinakama", "pagpapa", "pinagka", "maisasa", "panganga", "makapag",
 						"makipag", "packaging", "tagapag", "makipag", "nakipag", "pinaki", "tigapag", "mangaka", "isinasa", "maisa",
 						"naisa", "magsi", "nagsi", "pakiki", "magpa", "napaka", "pinaka", "ipinag", "pagka", "pinag", "mapag",
 						"mapa", "taga", "ipag", "tiga", "pala", "pina", "pang", "paki", "naka", "naki", "nang", "mang", "maka",
 						"maki", "sing", "ipa", "isa", "pam", "pan", "pag", "tag", "mai", "mag", "nam", "nag", "man", "may", "ma",
-						"na", "ni", "pa", "ka", "um", "in", "i"));
+						"na", "ni", "pa", "ka", "um", "in", "i")));
 
 		if (isInRoots(token)) {
 			return token;
@@ -311,7 +329,7 @@ public class TagalogStemmer
 			return token;
 		}
 
-		final Set<String> prefixSet = Sets.newLinkedHashSet(
+		final Set<String> prefixSet = new LinkedHashSet<>(
 				Arrays.asList("magpapaka", "magpaka", "magpapa", "nangaka", "mag", "pama", "maka", "naka", "na", "ma", "pa", "ka",
 						"ika", "kina", "pagka", "pakikipa"));
 
@@ -358,7 +376,7 @@ public class TagalogStemmer
 			return token;
 		}
 
-		final Set<String> prefixSet = Sets.newLinkedHashSet(Arrays.asList("mana", "pana", "nana", "ma", "pa", "na"));
+		final Set<String> prefixSet = new LinkedHashSet<>(Arrays.asList("mana", "pana", "nana", "ma", "pa", "na"));
 		for (String prefix : prefixSet) {
 			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
 
@@ -391,7 +409,7 @@ public class TagalogStemmer
 			return token;
 		}
 
-		final Set<String> prefixSet = Sets.newLinkedHashSet(
+		final Set<String> prefixSet = new LinkedHashSet<>(
 				Arrays.asList("magpa", "nagpa", "kina", "maka", "naka", "mapa", "ipa", "napa", "ka", "ma"));
 		for (String prefix : prefixSet) {
 			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
@@ -437,7 +455,7 @@ public class TagalogStemmer
 			return token;
 		}
 
-		final Set<String> infixSet = Sets.newLinkedHashSet(Arrays.asList("um", "in"));
+		final Set<String> infixSet = new LinkedHashSet<>(Arrays.asList("um", "in"));
 
 		for (String infix : infixSet) {
 			if (token.length() - infix.length() >= 3 && countVowel(token.substring(infix.length())) >= 2) {
@@ -456,7 +474,7 @@ public class TagalogStemmer
 	{
 		List<String> suffixCandidates = new ArrayList<>();
 
-		final Set<String> suffixSet = Sets.newLinkedHashSet(
+		final Set<String> suffixSet = new LinkedHashSet<>(
 				Arrays.asList("syon", "dor", "ita", "han", "hin", "ing", "aang", "ang", "ng", "an", "in", "g"));
 
 		if (isInRoots(token)) {
