@@ -1,7 +1,5 @@
 package com.smartkyc.stemmers.tagalog;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +7,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -16,29 +15,31 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class TagalogStemmer
 {
-	public TagalogStemmer() throws IOException
-	{
-		try (InputStream stream = TagalogStemmer.class.getResourceAsStream("/roots.txt")) {
+	static {
+		try (InputStream stream = TagalogStemmer.class.getResourceAsStream(
+				"/tagalogWordsRoots.txt")) { //rename this file and move to folder
 			if (stream == null) {
 				throw new IOException("Unable to create input stream from resource.");
 			}
 			try (final InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
 					BufferedReader in = new BufferedReader(reader)) {
-				rootsForValidating = in.lines().map(String::trim).map(String::toLowerCase).filter(l -> !l.startsWith("#"))
-						.filter(this::isNotBlank).collect(Collectors.toList());
+				rootsForValidating = Collections.unmodifiableSet(
+						in.lines().map(String::trim).map(String::toLowerCase).filter(l -> !l.startsWith("#"))
+								.filter(TagalogStemmer::isNotBlank).collect(Collectors.toSet()));
 			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
-	private boolean isNotBlank(String str)
+	private static boolean isNotBlank(String str)
 	{
 		return !isBlank(str);
 	}
 
-	private boolean isBlank(String str)
+	private static boolean isBlank(String str)
 	{
 		int strLen;
 		if (str == null || (strLen = str.length()) == 0) {
@@ -52,7 +53,7 @@ public class TagalogStemmer
 		return true;
 	}
 
-	private final List<String> rootsForValidating;
+	private static final Set<String> rootsForValidating;
 
 	private static final String CONSONANTS = "bcdfghklmnngpqrstvwyBCDFGHKLMNNGPQRSTVWY";
 

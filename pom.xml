@@ -4,7 +4,7 @@
 
 	<groupId>com.smartkyc.stemmers</groupId>
 	<artifactId>tagalog-stemmer</artifactId>
-	<version>1.0-0</version>
+	<version>1.0.1</version>
 	<packaging>jar</packaging>
 
 	<name>tagalog-stemmer</name>
@@ -15,18 +15,6 @@
 	</properties>
 
 	<dependencies>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<version>1.18.24</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.7.32</version>
-		</dependency>
-
 		<!-- TEST -->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -34,10 +22,10 @@
 			<version>5.7.2</version>
 			<scope>test</scope>
 		</dependency>
-
 	</dependencies>
 
 	<distributionManagement>
+		
 
 	</distributionManagement>
 </project>
