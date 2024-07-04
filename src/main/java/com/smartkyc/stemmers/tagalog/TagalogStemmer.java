@@ -1,5 +1,8 @@
 package com.smartkyc.stemmers.tagalog;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,6 +20,31 @@ import java.util.stream.Collectors;
 
 public class TagalogStemmer
 {
+
+	private static final Logger log = LoggerFactory.getLogger(TagalogStemmer.class);
+
+	private static final Set<String> ROOTS_FOR_VALIDATING;
+
+	private static final Map<String, String> ORDINAL_NUMBERS_ROOTS;
+
+	private static final Map<String, String> NUMBER_ROOTS;
+
+	private static final Set<String> PREFIX_SET = Collections.unmodifiableSet(new LinkedHashSet<>(
+			(Arrays.asList("nakikipag", "pakikipag", "pinakama", "pagpapa", "pinagka", "maisasa", "panganga", "makapag", "makipag",
+					"packaging", "tagapag", "makipag", "nakipag", "pinaki", "tigapag", "mangaka", "isinasa", "maisa", "naisa",
+					"magsi", "nagsi", "pakiki", "magpa", "napaka", "pinaka", "ipinag", "pagka", "pinag", "mapag", "mapa", "taga",
+					"ipag", "tiga", "pala", "pina", "pang", "paki", "naka", "naki", "nang", "mang", "maka", "maki", "sing", "ipa",
+					"isa", "pam", "pan", "pag", "tag", "mai", "mag", "nam", "nag", "man", "may", "ma", "na", "ni", "pa", "ka", "um",
+					"in", "i"))));
+
+	private static final Set<String> SUFFIX_SET = Collections.unmodifiableSet(
+			new LinkedHashSet<>(Arrays.asList("syon", "dor", "ita", "han", "hin", "ing", "aang", "ang", "ng", "an", "in", "g")));
+
+	private static final List<String> EXCEPTIONS = Collections.unmodifiableList(
+			Arrays.asList("dr", "gl", "gr", "ng", "kr", "kl", "kw", "ts", "tr", "pr", "pl", "pw", "sw", "sy"));
+
+	private static final String CONSONANTS = "bcdfghklmnngpqrstvwyBCDFGHKLMNNGPQRSTVWY";
+
 	static {
 		try (InputStream stream = TagalogStemmer.class.getResourceAsStream(
 				"/tagalogWordsRoots.txt")) { //rename this file and move to folder
@@ -25,90 +53,97 @@ public class TagalogStemmer
 			}
 			try (final InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
 					BufferedReader in = new BufferedReader(reader)) {
-				rootsForValidating = Collections.unmodifiableSet(
+				ROOTS_FOR_VALIDATING = Collections.unmodifiableSet(
 						in.lines().map(String::trim).map(String::toLowerCase).filter(l -> !l.startsWith("#"))
 								.filter(TagalogStemmer::isNotBlank).collect(Collectors.toSet()));
 			}
-		} catch (IOException e) {
-			throw new RuntimeException(e);
+		} catch (final IOException e) {
+			throw new IllegalStateException("Failed to read tagalog roots file", e);
 		}
+
+		final Map<String, String> ordinalNumbersRoots = new HashMap<>();
+		ordinalNumbersRoots.put("isa", "isa");
+		ordinalNumbersRoots.put("lawa", "dalawa");
+		ordinalNumbersRoots.put("tlo", "tatlo");
+		ordinalNumbersRoots.put("apat", "apat");
+		ordinalNumbersRoots.put("lima", "lima");
+		ordinalNumbersRoots.put("anim", "anim");
+		ordinalNumbersRoots.put("pito", "pito");
+		ordinalNumbersRoots.put("walo", "walo");
+		ordinalNumbersRoots.put("siyam", "siyam");
+		ordinalNumbersRoots.put("sampu", "sampu");
+		ORDINAL_NUMBERS_ROOTS = Collections.unmodifiableMap(ordinalNumbersRoots);
+
+		final Map<String, String> numberRoots = new HashMap<>();
+		numberRoots.put("dalawa", "dalawa");
+		numberRoots.put("tatlu", "tatlo");
+		numberRoots.put("apatnapu", "apat");
+		numberRoots.put("limampu", "lima");
+		numberRoots.put("animnapu", "anim");
+		numberRoots.put("pitumpu", "pito");
+		numberRoots.put("walumpu", "walo");
+		numberRoots.put("siyamnapu", "siyam");
+		NUMBER_ROOTS = Collections.unmodifiableMap(numberRoots);
 	}
 
-	private static boolean isNotBlank(String str)
+	public String stem(final String token)
 	{
-		return !isBlank(str);
-	}
-
-	private static boolean isBlank(String str)
-	{
-		int strLen;
-		if (str == null || (strLen = str.length()) == 0) {
-			return true;
-		}
-		for (int i = 0; i < strLen; i++) {
-			if ((!Character.isWhitespace(str.charAt(i)))) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	private static final Set<String> rootsForValidating;
-
-	private static final String CONSONANTS = "bcdfghklmnngpqrstvwyBCDFGHKLMNNGPQRSTVWY";
-
-	public String stem(String token)
-	{
-		List<String> repetitions = new ArrayList<>();
-		List<String> cleaners = new ArrayList<>();
-
-		if (isInRoots(token)) {
+		if (isBlank(token) || isInRoots(token)) {
 			return token;
 		}
 
-		token = cleanOrdinals(token.toLowerCase());
-		token = cleanNumbers(token.toLowerCase());
-		token = cleanIPrefix(token);
-		token = cleanDuplication(token.toLowerCase());
-		token = cleanRepeatingSubstrings(token);
-		token = cleanRepetition(token, repetitions);
-		token = cleanPrefixWithDbecomesR(token);
-		token = cleanPrefixWithPBtoM(token);
-		token = cleanPrefixWithSDTtoN(token);
-		token = cleanPrefixWithKtoNg(token);
-		token = cleanPrefix(token);
-		token = cleanPrefix(token);
-		token = cleanInfix(token);
-		token = cleanRepetition(token, repetitions);
+		try {
+			final List<String> repetitions = new ArrayList<>();
+			final List<String> cleaners = new ArrayList<>();
 
-		token = cleanDuplication(token);
-		token = cleanRBetweenVowels(token);
+			String cleanedToken = cleanOrdinals(token.toLowerCase());
+			cleanedToken = cleanNumbers(cleanedToken.toLowerCase());
+			cleanedToken = cleanIPrefix(cleanedToken);
+			cleanedToken = cleanDuplication(cleanedToken.toLowerCase());
+			cleanedToken = cleanRepeatingSubstrings(cleanedToken);
+			cleanedToken = cleanRepetition(cleanedToken, repetitions);
+			cleanedToken = cleanPrefixWithDbecomesR(cleanedToken);
+			cleanedToken = cleanPrefixWithPBtoM(cleanedToken);
+			cleanedToken = cleanPrefixWithSDTtoN(cleanedToken);
+			cleanedToken = cleanPrefixWithKtoNg(cleanedToken);
+			cleanedToken = cleanPrefix(cleanedToken);
+			cleanedToken = cleanPrefix(cleanedToken);
+			cleanedToken = cleanInfix(cleanedToken);
+			cleanedToken = cleanRepetition(cleanedToken, repetitions);
 
-		token = cleanSuffix(token);
-		token = cleanDuplication(token);
-		token = cleanStemmed(token, cleaners, repetitions);
+			cleanedToken = cleanDuplication(cleanedToken);
+			cleanedToken = cleanRBetweenVowels(cleanedToken);
 
-		if (!isInRoots(token)) {
-			token = cleanDuplication(token.toLowerCase());
-			token = cleanRepeatingSubstrings(token);
-			token = cleanRepetition(token, repetitions);
-			token = cleanPrefixWithPBtoM(token);
-			token = cleanPrefixWithSDTtoN(token);
-			token = cleanPrefixWithKtoNg(token);
-			token = cleanPrefix(token);
-			token = cleanPrefix(token);
-			token = cleanInfix(token);
-			token = cleanRepetition(token, repetitions);
+			cleanedToken = cleanSuffix(cleanedToken);
+			cleanedToken = cleanDuplication(cleanedToken);
+			cleanedToken = cleanStemmed(cleanedToken, cleaners, repetitions);
 
-			token = cleanDuplication(token);
-			token = cleanRBetweenVowels(token);
+			if (!isInRoots(cleanedToken)) {
+				cleanedToken = cleanDuplication(cleanedToken.toLowerCase());
+				cleanedToken = cleanRepeatingSubstrings(cleanedToken);
+				cleanedToken = cleanRepetition(cleanedToken, repetitions);
+				cleanedToken = cleanPrefixWithPBtoM(cleanedToken);
+				cleanedToken = cleanPrefixWithSDTtoN(cleanedToken);
+				cleanedToken = cleanPrefixWithKtoNg(cleanedToken);
+				cleanedToken = cleanPrefix(cleanedToken);
+				cleanedToken = cleanPrefix(cleanedToken);
+				cleanedToken = cleanInfix(cleanedToken);
+				cleanedToken = cleanRepetition(cleanedToken, repetitions);
 
-			token = cleanSuffix(token);
-			token = cleanDuplication(token);
-			token = cleanStemmed(token, cleaners, repetitions);
+				cleanedToken = cleanDuplication(cleanedToken);
+				cleanedToken = cleanRBetweenVowels(cleanedToken);
+
+				cleanedToken = cleanSuffix(cleanedToken);
+				cleanedToken = cleanDuplication(cleanedToken);
+				cleanedToken = cleanStemmed(cleanedToken, cleaners, repetitions);
+			}
+
+			return cleanedToken;
+		} catch (final Exception e) {
+			log.debug("Failed to stem token: {}", token, e);
+			return token;
 		}
 
-		return token;
 	}
 
 	private String cleanRBetweenVowels(String token)
@@ -121,23 +156,11 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanOrdinals(String token)
+	private String cleanOrdinals(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
 		}
-
-		final Map<String, String> numberRoots = new HashMap<>();
-		numberRoots.put("isa", "isa");
-		numberRoots.put("lawa", "dalawa");
-		numberRoots.put("tlo", "tatlo");
-		numberRoots.put("apat", "apat");
-		numberRoots.put("lima", "lima");
-		numberRoots.put("anim", "anim");
-		numberRoots.put("pito", "pito");
-		numberRoots.put("walo", "walo");
-		numberRoots.put("siyam", "siyam");
-		numberRoots.put("sampu", "sampu");
 
 		if (token.startsWith("pangatlo")) {
 			return "tatlo";
@@ -153,7 +176,7 @@ public class TagalogStemmer
 				potentialRoot = potentialRoot.replace("-", "");
 				potentialRoot = potentialRoot.substring(6);
 			}
-			for (Map.Entry<String, String> entry : numberRoots.entrySet()) {
+			for (final Map.Entry<String, String> entry : ORDINAL_NUMBERS_ROOTS.entrySet()) {
 				if (potentialRoot.startsWith(entry.getKey())) {
 					return entry.getValue();
 				}
@@ -162,22 +185,13 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanNumbers(String token)
+	private String cleanNumbers(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
 		}
 
-		final Map<String, String> numberRoots = new HashMap<>();
-		numberRoots.put("dalawa", "dalawa");
-		numberRoots.put("tatlu", "tatlo");
-		numberRoots.put("apatnapu", "apat");
-		numberRoots.put("limampu", "lima");
-		numberRoots.put("animnapu", "anim");
-		numberRoots.put("pitumpu", "pito");
-		numberRoots.put("walumpu", "walo");
-		numberRoots.put("siyamnapu", "siyam");
-		for (Map.Entry<String, String> entry : numberRoots.entrySet()) {
+		for (final Map.Entry<String, String> entry : NUMBER_ROOTS.entrySet()) {
 			if (token.startsWith(entry.getKey())) {
 				return entry.getValue();
 			}
@@ -185,17 +199,17 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanDuplication(String token)
+	private String cleanDuplication(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
 		}
 
 		if (token.contains("-") && token.indexOf("-") != 0 && token.indexOf("-") != token.length() - 1) {
-			String[] split = token.split("-");
+			final String[] split = token.split("-");
 			if (Arrays.stream(split).allMatch(s -> s.length() >= 3)) {
-				String partOne = split[0];
-				String partTwo = split[1];
+				final String partOne = split[0];
+				final String partTwo = split[1];
 				if (partOne.equals(String.valueOf(token.charAt(1))) //
 						|| (partOne.endsWith("u") && swapCharAt(partOne, 'o', -1).equals(partTwo)) //
 						|| (partOne.endsWith("u") && swapCharAt(partOne, 'o', -2).equals(partTwo)) //
@@ -227,7 +241,7 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanRepetition(String token, List<String> repetitionList)
+	private String cleanRepetition(final String token, final List<String> repetitionList)
 	{
 		if (isInRoots(token)) {
 			return token;
@@ -259,11 +273,11 @@ public class TagalogStemmer
 		}
 
 		for (int i = 1; i < token.length(); i++) {
-			String currentSubstring = token.substring(i - 1, i + 1);
+			final String currentSubstring = token.substring(i - 1, i + 1);
 
 			if (token.length() % currentSubstring.length() == 0 && //
 					(currentSubstring.startsWith("m") || currentSubstring.startsWith("n"))) {
-				StringBuilder repeatedString = new StringBuilder();
+				final StringBuilder repeatedString = new StringBuilder();
 				repeatedString.append(currentSubstring).append(currentSubstring);
 				if (token.contains(repeatedString)) {
 					token = token.substring(0, i - 1) + token.substring(i + 1);
@@ -276,25 +290,17 @@ public class TagalogStemmer
 
 	private String cleanPrefix(String token)
 	{
-		final Set<String> prefixSet = new LinkedHashSet<>(
-				(Arrays.asList("nakikipag", "pakikipag", "pinakama", "pagpapa", "pinagka", "maisasa", "panganga", "makapag",
-						"makipag", "packaging", "tagapag", "makipag", "nakipag", "pinaki", "tigapag", "mangaka", "isinasa", "maisa",
-						"naisa", "magsi", "nagsi", "pakiki", "magpa", "napaka", "pinaka", "ipinag", "pagka", "pinag", "mapag",
-						"mapa", "taga", "ipag", "tiga", "pala", "pina", "pang", "paki", "naka", "naki", "nang", "mang", "maka",
-						"maki", "sing", "ipa", "isa", "pam", "pan", "pag", "tag", "mai", "mag", "nam", "nag", "man", "may", "ma",
-						"na", "ni", "pa", "ka", "um", "in", "i")));
-
 		if (isInRoots(token)) {
 			return token;
 		}
 
-		for (String prefix : prefixSet) {
+		for (final String prefix : PREFIX_SET) {
 			if (token.length() - prefix.length() >= 3 && countVowel(token.substring(prefix.length())) >= 2) {
 				if (prefix.equals("i") && isConsonant(String.valueOf(token.charAt(2)))) {
 					continue;
 				}
 				if (token.contains("-")) {
-					String[] tokenParts = token.split("-");
+					final String[] tokenParts = token.split("-");
 					if (tokenParts[0].equals(prefix) && isVowel(tokenParts[1].charAt(0))) {
 						return tokenParts[1];
 					}
@@ -317,14 +323,14 @@ public class TagalogStemmer
 		if (token.startsWith("i") && isVowel(token.charAt(1)) && isConsonant(token.charAt(2))) {
 			token = token.substring(1);
 		}
-		String potentialCleanedSuffixForm = cleanSuffix(token);
+		final String potentialCleanedSuffixForm = cleanSuffix(token);
 		if (isInRoots(potentialCleanedSuffixForm)) {
 			return potentialCleanedSuffixForm;
 		}
 		return token;
 	}
 
-	private String cleanPrefixWithPBtoM(String token)
+	private String cleanPrefixWithPBtoM(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
@@ -334,18 +340,18 @@ public class TagalogStemmer
 				Arrays.asList("magpapaka", "magpaka", "magpapa", "nangaka", "mag", "pama", "maka", "naka", "na", "ma", "pa", "ka",
 						"ika", "kina", "pagka", "pakikipa"));
 
-		for (String prefix : prefixSet) {
+		for (final String prefix : prefixSet) {
 			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
 				if ((token.startsWith(prefix) && token.charAt(prefix.length()) == 'm')) {
-					String tokenWithoutPrefix = token.substring(prefix.length());
+					final String tokenWithoutPrefix = token.substring(prefix.length());
 					if (isInRoots(tokenWithoutPrefix)) {
 						return tokenWithoutPrefix;
 					}
-					String potentialFormSwapP = revertToRoot(tokenWithoutPrefix, 'p');
+					final String potentialFormSwapP = revertToRoot(tokenWithoutPrefix, 'p');
 					if (!potentialFormSwapP.equals(tokenWithoutPrefix)) {
 						return potentialFormSwapP;
 					}
-					String potentialFormSwapB = revertToRoot(tokenWithoutPrefix, 'b');
+					final String potentialFormSwapB = revertToRoot(tokenWithoutPrefix, 'b');
 					if (!potentialFormSwapB.equals(tokenWithoutPrefix)) {
 						return potentialFormSwapB;
 					}
@@ -355,46 +361,46 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String revertToRoot(String tokenWithoutPrefix, char potentialChar)
+	private String revertToRoot(final String tokenWithoutPrefix, final char potentialChar)
 	{
 		if (isInRoots(tokenWithoutPrefix)) {
 			return tokenWithoutPrefix;
 		}
-		String potentialForm = swapCharAt(tokenWithoutPrefix, potentialChar, 0);
+		final String potentialForm = swapCharAt(tokenWithoutPrefix, potentialChar, 0);
 		if (isInRoots(potentialForm)) {
 			return potentialForm;
 		}
-		String potentialFormWithoutSuffix = cleanSuffix(potentialForm);
+		final String potentialFormWithoutSuffix = cleanSuffix(potentialForm);
 		if (isInRoots(potentialFormWithoutSuffix)) {
 			return potentialFormWithoutSuffix;
 		}
 		return tokenWithoutPrefix;
 	}
 
-	private String cleanPrefixWithSDTtoN(String token)
+	private String cleanPrefixWithSDTtoN(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
 		}
 
 		final Set<String> prefixSet = new LinkedHashSet<>(Arrays.asList("mana", "pana", "nana", "ma", "pa", "na"));
-		for (String prefix : prefixSet) {
+		for (final String prefix : prefixSet) {
 			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
 
 				if ((token.startsWith(prefix)) && token.charAt(prefix.length()) == 'n') {
-					String tokenWithoutPrefix = token.substring(prefix.length());
+					final String tokenWithoutPrefix = token.substring(prefix.length());
 					if (isInRoots(tokenWithoutPrefix)) {
 						return tokenWithoutPrefix;
 					}
-					String potentialFormSwapS = revertToRoot(tokenWithoutPrefix, 's');
+					final String potentialFormSwapS = revertToRoot(tokenWithoutPrefix, 's');
 					if (!potentialFormSwapS.equals(tokenWithoutPrefix)) {
 						return potentialFormSwapS;
 					}
-					String potentialFormSwapD = revertToRoot(tokenWithoutPrefix, 'd');
+					final String potentialFormSwapD = revertToRoot(tokenWithoutPrefix, 'd');
 					if (!potentialFormSwapD.equals(tokenWithoutPrefix)) {
 						return potentialFormSwapD;
 					}
-					String potentialFormSwapT = revertToRoot(tokenWithoutPrefix, 't');
+					final String potentialFormSwapT = revertToRoot(tokenWithoutPrefix, 't');
 					if (!potentialFormSwapT.equals(tokenWithoutPrefix)) {
 						return potentialFormSwapT;
 					}
@@ -404,7 +410,7 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanPrefixWithDbecomesR(String token)
+	private String cleanPrefixWithDbecomesR(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
@@ -412,14 +418,14 @@ public class TagalogStemmer
 
 		final Set<String> prefixSet = new LinkedHashSet<>(
 				Arrays.asList("magpa", "nagpa", "kina", "maka", "naka", "mapa", "ipa", "napa", "ka", "ma"));
-		for (String prefix : prefixSet) {
+		for (final String prefix : prefixSet) {
 			if (token.length() - 2 >= 3 && countVowel(token.substring(2)) >= 2) {
 				if ((token.startsWith(prefix)) && token.charAt(prefix.length()) == 'r') {
-					String tokenWithoutPrefix = token.substring(prefix.length());
+					final String tokenWithoutPrefix = token.substring(prefix.length());
 					if (isInRoots(tokenWithoutPrefix)) {
 						return tokenWithoutPrefix;
 					}
-					String potentialFormSwapS = revertToRoot(tokenWithoutPrefix, 'd');
+					final String potentialFormSwapS = revertToRoot(tokenWithoutPrefix, 'd');
 					if (!potentialFormSwapS.equals(tokenWithoutPrefix)) {
 						return potentialFormSwapS;
 					}
@@ -429,7 +435,7 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanPrefixWithKtoNg(String token)
+	private String cleanPrefixWithKtoNg(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
@@ -450,7 +456,7 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanInfix(String token)
+	private String cleanInfix(final String token)
 	{
 		if (isInRoots(token)) {
 			return token;
@@ -458,7 +464,7 @@ public class TagalogStemmer
 
 		final Set<String> infixSet = new LinkedHashSet<>(Arrays.asList("um", "in"));
 
-		for (String infix : infixSet) {
+		for (final String infix : infixSet) {
 			if (token.length() - infix.length() >= 3 && countVowel(token.substring(infix.length())) >= 2) {
 				if (token.charAt(0) == token.charAt(4) && token.substring(1, 4).equals(infix)) {
 					return token.substring(4);
@@ -471,27 +477,24 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private String cleanSuffix(String token)
+	private String cleanSuffix(final String token)
 	{
-		List<String> suffixCandidates = new ArrayList<>();
-
-		final Set<String> suffixSet = new LinkedHashSet<>(
-				Arrays.asList("syon", "dor", "ita", "han", "hin", "ing", "aang", "ang", "ng", "an", "in", "g"));
-
 		if (isInRoots(token)) {
 			return token;
 		}
+
+		final List<String> suffixCandidates = new ArrayList<>();
 		if (token.contains("syon") && token.endsWith("ng")) {
-			String candidate = token.substring(0, token.length() - 1);
+			final String candidate = token.substring(0, token.length() - 1);
 			if (isInRoots(candidate)) {
 				return candidate;
 			}
 		}
 
-		for (String suffix : suffixSet) {
+		for (final String suffix : SUFFIX_SET) {
 			if (token.length() - suffix.length() >= 3) //
 			{
-				String substring = token.substring(0, token.length() - suffix.length());
+				final String substring = token.substring(0, token.length() - suffix.length());
 				if (countVowel(substring) >= 2 && (token.endsWith(suffix))) {
 					if (suffix.length() == 2 && (countConsonant(substring) < 1)) {
 						continue;
@@ -522,23 +525,23 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private boolean isVowel(char letter)
+	private boolean isVowel(final char letter)
 	{
-		String vowels = "aeiouAEIOU";
+		final String vowels = "aeiouAEIOU";
 		return vowels.contains(String.valueOf(letter));
 	}
 
-	private boolean isConsonant(String character)
+	private boolean isConsonant(final String character)
 	{
 		return CONSONANTS.contains(character);
 	}
 
-	private boolean isConsonant(char character)
+	private boolean isConsonant(final char character)
 	{
 		return CONSONANTS.contains(String.valueOf(character));
 	}
 
-	private int countVowel(String token)
+	private int countVowel(final String token)
 	{
 		int count = 0;
 		for (int i = 0; i < token.length(); i++) {
@@ -549,7 +552,7 @@ public class TagalogStemmer
 		return count;
 	}
 
-	private int countConsonant(String token)
+	private int countConsonant(final String token)
 	{
 		int count = 0;
 		for (int i = 0; i < token.length(); i++) {
@@ -560,9 +563,9 @@ public class TagalogStemmer
 		return count;
 	}
 
-	private String swapCharAt(String token, char letter, int index)
+	private String swapCharAt(final String token, final char letter, final int index)
 	{
-		char[] charArray = token.toCharArray();
+		final char[] charArray = token.toCharArray();
 		if (index < 0) {
 			charArray[(charArray.length + index)] = letter;
 			return new String(charArray);
@@ -571,13 +574,11 @@ public class TagalogStemmer
 		return new String(charArray);
 	}
 
-	private String cleanStemmed(String token, List<String> cleaners, List<String> repetition)
+	private String cleanStemmed(String token, final List<String> cleaners, final List<String> repetition)
 	{
 		if (isInRoots(token)) {
 			return token;
 		}
-
-		List<String> exceptions = Arrays.asList("dr", "gl", "gr", "ng", "kr", "kl", "kw", "ts", "tr", "pr", "pl", "pw", "sw", "sy");
 
 		if (!isVowel(token.charAt(token.length() - 1)) && !isConsonant(token.substring(token.length() - 1))) {
 			cleaners.add(String.valueOf(token.charAt(token.length() - 1)));
@@ -649,7 +650,7 @@ public class TagalogStemmer
 				token = token.substring(2);
 			}
 
-			for (String REP : repetition) {
+			for (final String REP : repetition) {
 				if (REP.charAt(0) == 'r') {
 					cleaners.add("r");
 					token = swapCharAt(token, 'd', 0);
@@ -670,7 +671,7 @@ public class TagalogStemmer
 				token = token.substring(1);
 			}
 
-			if (exceptions.stream().noneMatch(token.substring(0, 2)::equals) && isConsonant(token.substring(0, 2))) {
+			if (EXCEPTIONS.stream().noneMatch(token.substring(0, 2)::equals) && isConsonant(token.substring(0, 2))) {
 				cleaners.add(token.substring(0, 2));
 				token = token.substring(1);
 			}
@@ -678,8 +679,27 @@ public class TagalogStemmer
 		return token;
 	}
 
-	private boolean isInRoots(String token)
+	private boolean isInRoots(final String token)
 	{
-		return rootsForValidating.contains(token.toLowerCase());
+		return ROOTS_FOR_VALIDATING.contains(token.toLowerCase());
+	}
+
+	private static boolean isNotBlank(final String str)
+	{
+		return !isBlank(str);
+	}
+
+	private static boolean isBlank(final String str)
+	{
+		final int strLen;
+		if (str == null || (strLen = str.length()) == 0) {
+			return true;
+		}
+		for (int i = 0; i < strLen; i++) {
+			if ((!Character.isWhitespace(str.charAt(i)))) {
+				return false;
+			}
+		}
+		return true;
 	}
 }
