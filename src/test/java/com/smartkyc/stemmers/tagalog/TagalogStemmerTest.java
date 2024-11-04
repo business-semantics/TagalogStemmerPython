@@ -264,4 +264,22 @@ class TagalogStemmerTest
 		final String stem2 = stemmer.stem("tumatakbo");
 		assertEquals("takbo", stem2);
 	}
+
+	@Test
+	void testShortTokens()
+	{
+		final TagalogStemmer stemmer = new TagalogStemmer();
+		final String stem = stemmer.stem("1%");
+		assertEquals("1%", stem);
+		final String stem1 = stemmer.stem("1");
+		assertEquals("1", stem1);
+		final String stem2 = stemmer.stem("&");
+		assertEquals("&", stem2);
+		final String stem5 = stemmer.stem("%");
+		assertEquals("%", stem5);
+		final String stem6 = stemmer.stem("ii");
+		assertEquals("ii", stem6);
+		final String stem7 = stemmer.stem("4");
+		assertEquals("4", stem7);
+	}
 }

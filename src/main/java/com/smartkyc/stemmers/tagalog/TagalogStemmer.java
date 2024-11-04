@@ -138,6 +138,10 @@ public class TagalogStemmer
 				cleanedToken = cleanStemmed(cleanedToken, cleaners, repetitions);
 			}
 
+			if (isBlank(cleanedToken)) {
+				return token;
+			}
+
 			return cleanedToken;
 		} catch (final Exception e) {
 			log.debug("Failed to stem token: {}", token, e);
@@ -320,7 +324,7 @@ public class TagalogStemmer
 
 	private String cleanIPrefix(String token)
 	{
-		if (token.startsWith("i") && isVowel(token.charAt(1)) && isConsonant(token.charAt(2))) {
+		if (token.length() > 2 && token.startsWith("i") && isVowel(token.charAt(1)) && isConsonant(token.charAt(2))) {
 			token = token.substring(1);
 		}
 		final String potentialCleanedSuffixForm = cleanSuffix(token);
@@ -576,13 +580,17 @@ public class TagalogStemmer
 
 	private String cleanStemmed(String token, final List<String> cleaners, final List<String> repetition)
 	{
-		if (isInRoots(token)) {
+		if (isBlank(token) || isInRoots(token)) {
 			return token;
 		}
 
 		if (!isVowel(token.charAt(token.length() - 1)) && !isConsonant(token.substring(token.length() - 1))) {
 			cleaners.add(String.valueOf(token.charAt(token.length() - 1)));
 			token = token.substring(0, token.length() - 1);
+		}
+
+		if (token.length() <= 1) {
+			return token;
 		}
 
 		if (!isVowel(token.charAt(0)) && !isConsonant(String.valueOf(token.charAt(0)))) {
