@@ -31,7 +31,14 @@
 	</dependencies>
 
 	<distributionManagement>
-
+		<repository>
+			<id>business-semantics.com</id>
+			<url>https://artifactory.smartkyc.com/artifactory/private-internal-repository-local</url>
+		</repository>
+		<snapshotRepository>
+			<id>business-semantics.com</id>
+			<url>https://artifactory.smartkyc.com/artifactory/private-internal-repository-local-snaphots</url>
+		</snapshotRepository>
 	</distributionManagement>
 
 	<build>
@@ -60,4 +67,5 @@
 			</plugin>
 		</plugins>
 	</build>
+
 </project>
