@@ -4,7 +4,7 @@
 
 	<groupId>com.smartkyc.stemmers</groupId>
 	<artifactId>tagalog-stemmer</artifactId>
-	<version>1.0.3</version>
+	<version>1.0.4</version>
 	<packaging>jar</packaging>
 
 	<name>tagalog-stemmer</name>
@@ -31,7 +31,14 @@
 	</dependencies>
 
 	<distributionManagement>
-
+		<repository>
+			<id>business-semantics.com</id>
+			<url>https://artifactory.smartkyc.com/artifactory/private-internal-repository-local</url>
+		</repository>
+		<snapshotRepository>
+			<id>business-semantics.com</id>
+			<url>https://artifactory.smartkyc.com/artifactory/private-internal-repository-local-snaphots</url>
+		</snapshotRepository>
 	</distributionManagement>
 
 	<build>
@@ -60,4 +67,5 @@
 			</plugin>
 		</plugins>
 	</build>
+
 </project>

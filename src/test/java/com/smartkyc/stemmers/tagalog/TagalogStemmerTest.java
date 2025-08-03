@@ -282,4 +282,14 @@ class TagalogStemmerTest
 		final String stem7 = stemmer.stem("4");
 		assertEquals("4", stem7);
 	}
+
+	@Test
+	void testDuplicateToken()
+	{
+		final TagalogStemmer stemmer = new TagalogStemmer();
+		final String stem = stemmer.stem("iii");
+		assertEquals("ii", stem);
+		final String stem1= stemmer.stem("iiii");
+		assertEquals("ii", stem1);
+	}
 }

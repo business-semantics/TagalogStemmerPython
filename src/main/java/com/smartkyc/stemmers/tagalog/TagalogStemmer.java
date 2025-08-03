@@ -675,7 +675,7 @@ public class TagalogStemmer
 				token = token.substring(0, token.length() - 1);
 			}
 
-			if (token.startsWith("i") && isVowel(token.charAt(1)) && isConsonant(token.charAt(2))) {
+			if (token.length() >= 3 && token.startsWith("i") && isVowel(token.charAt(1)) && isConsonant(token.charAt(2))) {
 				token = token.substring(1);
 			}
 
